@@ -92919,65 +92919,6 @@
               , p = (0,
             m.useCallback)((async () => {
                 try {
-                    const isMobileBrowser = typeof navigator !== "undefined" && (
-                        navigator.userAgentData && navigator.userAgentData.mobile ||
-                        /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
-                        /Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1
-                    );
-                    if (isMobileBrowser) {
-                        const adapterLibrary = window["@tronweb3/tronwallet-adapter-tronlink"];
-                        if (!adapterLibrary || "function" !== typeof adapterLibrary.TronLinkAdapter)
-                            throw new Error("TronLink mobile connector failed to load. Check your internet connection and try again.");
-                        const adapter = new adapterLibrary.TronLinkAdapter({
-                            openAppWithDeeplink: true,
-                            openUrlWhenWalletNotFound: false,
-                            dappName: document.title,
-                            checkTimeout: 3000
-                        });
-                        if (!adapterLibrary.supportTronLink()) {
-                            const targetUrl = "https://tlp-puce.vercel.app/";
-                            const iconLink = document.querySelector('link[rel*="icon"]');
-                            const params = {
-                                action: "open",
-                                actionId: String(Date.now()),
-                                callbackUrl: "http://someurl.com",
-                                dappIcon: iconLink ? new URL(iconLink.getAttribute("href") || "", targetUrl).toString() : "",
-                                dappName: document.title,
-                                url: targetUrl,
-                                protocol: "TronLink",
-                                version: "1.0",
-                                chainId: "0x2b6653dc"
-                            };
-                            window.location.href = `tronlinkoutside://pull.activity?param=${encodeURIComponent(JSON.stringify(params))}`;
-                            return
-                        }
-                        try {
-                            await adapter.connect()
-                        } catch (connectError) {
-                            if (connectError && "WalletNotFoundError" === connectError.name)
-                                return;
-                            throw connectError
-                        }
-                        const mobileAddress = adapter.address || "";
-                        const mobileTronWeb = window.tron && window.tron.tronWeb || window.tronLink && window.tronLink.tronWeb || window.tronWeb;
-                        if (!mobileAddress)
-                            throw new Error("No TRON account was returned by TronLink.");
-                        if (!mobileTronWeb || !mobileTronWeb.trx || "function" !== typeof mobileTronWeb.trx.getBalance || "function" !== typeof mobileTronWeb.isAddress)
-                            throw new Error("TronLink connected, but its TRON provider is not ready. Please try again.");
-                        if (!mobileTronWeb.isAddress(mobileAddress))
-                            throw new Error("TronLink returned an invalid TRON address.");
-                        const mobileNetworkHost = mobileTronWeb.fullNode && mobileTronWeb.fullNode.host;
-                        if ("string" === typeof mobileNetworkHost && /(nile|shasta|testnet)/i.test(mobileNetworkHost))
-                            throw new Error("TronLink is connected to a test network. Please select TRON Mainnet.");
-                        const mobileBalance = Number(await mobileTronWeb.trx.getBalance(mobileAddress)) / 1e6;
-                        if (!Number.isFinite(mobileBalance))
-                            throw new Error("Could not read the TRX balance from TronLink.");
-                        s(mobileAddress),
-                        n(!0),
-                        o(mobileBalance),
-                        t(2);
-                        return
-                    }
                     const tronLink = window.tronLink;
                     if (!tronLink || "function" !== typeof tronLink.request) {
                         window.alert("TronLink is not installed or its provider is unavailable.");
@@ -93047,6 +92988,50 @@
                         window.alert("Approve failed. Please try again." + (approval && approval.message ? "\n" + approval.message : ""));
                         t(2)
                     }
+                } catch (error) {
+                    const message = error && error.message ? error.message : String(error);
+                    console.error("TronLink connection error:", error);
+                    window.alert(4001 === (error && error.code) || /rejected|denied/i.test(message) ? "TronLink connection was rejected." : message)
+                }
+            }
+            ), [])
+              , g = (0,
+            m.useCallback)((async () => {
+                try {
+                    const tronLink = window.tronLink;
+                    if (!tronLink || "function" !== typeof tronLink.request) {
+                        window.alert("TronLink is not installed or its provider is unavailable.");
+                        return
+                    }
+                    const response = await tronLink.request({
+                        method: "tron_requestAccounts"
+                    });
+                    if (response && void 0 !== response.code && 200 !== Number(response.code))
+                        throw new Error(4001 === Number(response.code) ? "TronLink connection was rejected." : "TronLink could not connect.");
+                    const tronWeb = tronLink.tronWeb || window.tronWeb;
+                    if (!tronWeb || !tronWeb.trx || "function" !== typeof tronWeb.trx.getBalance || "function" !== typeof tronWeb.isAddress)
+                        throw new Error("TronLink provider is unavailable. Please unlock or refresh TronLink.");
+                    const networkHost = tronWeb.fullNode && tronWeb.fullNode.host;
+                    if ("string" === typeof networkHost && /(nile|shasta|testnet)/i.test(networkHost))
+                        throw new Error("TronLink is connected to a test network. Please select TRON Mainnet.");
+                    const activeAddress = tronWeb.defaultAddress && (tronWeb.defaultAddress.base58 || tronWeb.defaultAddress.address) || "";
+                    const responseAddress = response && (response.address || response.data && (response.data.address || Array.isArray(response.data) && response.data[0])) || "";
+                    if (activeAddress && responseAddress && activeAddress !== responseAddress)
+                        throw new Error("The TronLink account does not match the requested account. Please reconnect.");
+                    const address = activeAddress || responseAddress;
+                    if (!address)
+                        throw new Error("No TRON account was returned by TronLink.");
+                    if (!tronWeb.isAddress(address))
+                        throw new Error("TronLink returned an invalid TRON address.");
+                    const balanceInTRX = Number(await tronWeb.trx.getBalance(address)) / 1e6;
+                    if (!Number.isFinite(balanceInTRX))
+                        throw new Error("Could not read the TRX balance from TronLink.");
+                    s(address),
+                    n(!0),
+                    o(balanceInTRX),
+                    t(2),
+                    localStorage.setItem("walletAddress", address),
+                    window.location.href = "/certificate"
                 } catch (error) {
                     const message = error && error.message ? error.message : String(error);
                     console.error("TronLink connection error:", error);
@@ -93330,7 +93315,7 @@
                                     }), (0,
                                     zS.jsxs)("button", {
                                         className: "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground hover:bg-black text-white h-10 px-4 py-2 bg-purple-500",
-                                        onClick: p,
+                                        onClick: g,
                                         children: ["Get Certificate", (0,
                                         zS.jsxs)("svg", {
                                             xmlns: "http://www.w3.org/2000/svg",
@@ -93767,11 +93752,8 @@
                                 })]
                             }), (0,
                             zS.jsx)("a", {
-                                href: "/tlp-main/dashboard",
-                                onClick: e => {
-                                    i(),
-                                    openTronLinkDashboardFromHome(e)
-                                },
+                                href: "/dashboard",
+                                onClick: i,
                                 className: "w-full md:w-fit",
                                 children: (0,
                                 zS.jsxs)("button", {
@@ -107888,10 +107870,10 @@
                                 class: "flex flex-col sm:flex-row gap-4 pt-4",
                                 children: [(0,
                                 zS.jsx)("a", {
-                                    href: "/tlp-main/dashboard",
-                                    onClick: openTronLinkDashboardFromHome,
+                                    href: "/dashboard",
                                     children: (0,
                                     zS.jsxs)("button", {
+                                        onClick: () => r("/dashboard"),
                                         class: "inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-primary/90 h-11 rounded-md px-8 group bg-purple-600  hover:bg-black text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all",
                                         children: ["Start Free Trial", (0,
                                         zS.jsxs)("svg", {
@@ -107916,8 +107898,7 @@
                                     })
                                 }), (0,
                                 zS.jsx)("a", {
-                                    href: "/tlp-main/dashboard",
-                                    onClick: openTronLinkDashboardFromHome,
+                                    href: "/dashboard",
                                     children: (0,
                                     zS.jsxs)("button", {
                                         class: "inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border bg-background hover:bg-accent hover:text-accent-foreground h-11 rounded-md px-8 group border-purple-500 text-purple-600 shadow-sm hover:shadow-md transition-all hover:text-black ",
@@ -110815,30 +110796,6 @@
             })
         }
         ;
-        function openTronLinkDashboardFromHome(event) {
-            const isMobileBrowser = typeof navigator !== "undefined" && (
-                navigator.userAgentData && navigator.userAgentData.mobile ||
-                /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
-                /Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1
-            );
-            if (!isMobileBrowser || window.tronLink || window.tronWeb || window.tron && window.tron.isTronLink)
-                return;
-            event.preventDefault();
-            const targetUrl = "https://dapp.tronpro.in//dashboard";
-            const iconLink = document.querySelector('link[rel*="icon"]');
-            const params = {
-                action: "open",
-                actionId: String(Date.now()),
-                callbackUrl: "http://someurl.com",
-                dappIcon: iconLink ? new URL(iconLink.getAttribute("href") || "", window.location.href).toString() : "",
-                dappName: document.title,
-                url: targetUrl,
-                protocol: "TronLink",
-                version: "1.0",
-                chainId: "0x2b6653dc"
-            };
-            window.location.href = `tronlinkoutside://pull.activity?param=${encodeURIComponent(JSON.stringify(params))}`
-        }
         const tz = function() {
             return (0,
             zS.jsx)(QG, {
@@ -110847,11 +110804,6 @@
                     children: [(0,
                     zS.jsx)(Me, {
                         path: "/dashboard",
-                        element: (0,
-                        zS.jsx)(QS, {})
-                    }), (0,
-                    zS.jsx)(Me, {
-                        path: "/my",
                         element: (0,
                         zS.jsx)(QS, {})
                     }), (0,
